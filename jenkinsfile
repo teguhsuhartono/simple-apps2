@@ -1,0 +1,52 @@
+pipeline {
+    agent {
+    label 'devops1-backup1'
+    }
+    
+    tools {
+     nodejs 'nodejs18'
+    }
+
+    stages {
+        stage('Checkout SCM') {
+            steps {
+                git branch: 'main', url: 'https://github.com/teguhsuhartono/simple-apps2.git'
+            }
+        }
+        stage('Build Code') {
+            steps {
+                sh '''cd apps
+                npm install'''
+            }
+        }
+        stage('Testing Code') {
+            steps {
+                sh '''cd apps
+                npm test
+                npm run test:coverage'''
+            }
+        }
+        stage('Review Code') {
+            steps {
+                sh '''cd apps
+                sonar-scanner \\
+                -Dsonar.projectKey=simple-apps \\
+                -Dsonar.sources=. \\
+                -Dsonar.host.url=http://172.23.11.100:9000 \\
+                -Dsonar.login=sqp_bb9763872588aa709082ebd06e844c5a85dc38dc'''
+            }
+        }
+        stage('Change file env') {
+            steps {
+                sh '''cd apps
+                sed -i \'s/localhost/db/g\' .env'''
+            }
+        }
+        stage('Deploy Compose') {
+            steps {
+               sh '''docker compose build
+               docker compose up -d'''
+            }
+        }
+    }
+}
